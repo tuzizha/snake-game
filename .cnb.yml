@@ -5,31 +5,26 @@ name: snake-game
 version: 1.0.0
 description: 头部动作控制的贪吃蛇游戏
 
-# 构建环境
+# 构建配置
 build:
-  # 使用 Docker 镜像作为构建环境
-  image: nginx:alpine
+  # 构建环境
+  image: node:16-alpine
   # 构建命令
-  commands:
+  script:
     - echo "Building snake game..."
     - ls -la
-    - cp index.html /usr/share/nginx/html/
+    - mkdir -p /app
+    - cp index.html /app/
 
 # 部署配置
 deploy:
   # 部署类型
   type: static
   # 静态文件目录
-  static_dir: /usr/share/nginx/html
-  # 端口配置
+  root: /app
+  # 端口
   port: 80
-
-# 依赖配置
-deps:
-  - name: nginx
-    version: latest
 
 # 环境变量
 env:
-  - name: NODE_ENV
-    value: production
+  NODE_ENV: production
