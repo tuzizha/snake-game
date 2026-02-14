@@ -60,7 +60,7 @@
             border: 2px solid #00ccff;
             border-radius: 4px;
             z-index: 10;
-            display: none;
+            display: block;
         }
         
         .game-info {
@@ -168,6 +168,9 @@
         <div class="game-info">
             <div class="score">分数: <span id="score">0</span></div>
             <div style="margin-top: 5px;">检测动作: <span id="detected-action">-</span></div>
+            <div style="margin-top: 5px; font-size: 12px; color: #666;" id="debug-info">
+                等待人脸检测...
+            </div>
         </div>
         
         <div class="controls">
@@ -459,8 +462,13 @@
                 debugCtx.moveTo(nx, ny);
                 debugCtx.lineTo(nx + deltaX * 500, ny + deltaY * 500);
                 debugCtx.stroke();
+                
+                document.getElementById('debug-info').innerHTML = 
+                    `鼻子: (${currentNoseSmoothed.x.toFixed(3)}, ${currentNoseSmoothed.y.toFixed(3)})<br>` +
+                    `偏移: (${deltaX.toFixed(4)}, ${deltaY.toFixed(4)})`;
             } else {
                 document.getElementById('detected-action').innerText = "-";
+                document.getElementById('debug-info').innerText = "未检测到人脸";
             }
             debugCtx.restore();
         }
