@@ -421,7 +421,7 @@
         let headCanvas = document.createElement('canvas');
         let headCtx = headCanvas.getContext('2d');
         let lastHeadPosition = null;
-        let movementThreshold = 3; // 动作检测阈值（最高灵敏度）
+        let movementThreshold = 1; // 动作检测阈值（最高灵敏度）
         let actionCooldown = 50; // 动作识别冷却时间（毫秒，最快响应）
         let lastActionTime = 0;
         let debugMode = true; // 启用调试模式
