@@ -421,15 +421,31 @@
         let headCanvas = document.createElement('canvas');
         let headCtx = headCanvas.getContext('2d');
         let lastHeadPosition = null;
-        let movementThreshold = 15;
-        let actionCooldown = 300; // 动作识别冷却时间（毫秒）
+        let movementThreshold = 10; // 降低阈值，提高灵敏度
+        let actionCooldown = 200; // 减少冷却时间，提高响应速度
         let lastActionTime = 0;
+        let debugMode = true; // 启用调试模式
         
         // 设置头部检测画布大小
         headCanvas.width = 320;
         headCanvas.height = 240;
         headCanvas.style.display = 'none';
         document.body.appendChild(headCanvas);
+        
+        // 调试信息元素
+        let debugElement = document.createElement('div');
+        debugElement.style.position = 'fixed';
+        debugElement.style.top = '10px';
+        debugElement.style.left = '10px';
+        debugElement.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        debugElement.style.color = 'white';
+        debugElement.style.padding = '10px';
+        debugElement.style.borderRadius = '5px';
+        debugElement.style.fontSize = '12px';
+        debugElement.style.zIndex = '1000';
+        if (debugMode) {
+            document.body.appendChild(debugElement);
+        }
         
         // 头部动作识别主循环
         function headTrackingLoop() {
@@ -439,6 +455,15 @@
                 
                 // 检测头部位置
                 let headPosition = detectHeadPosition();
+                
+                // 更新调试信息
+                if (debugMode) {
+                    debugElement.innerHTML = `
+                        头部位置: ${headPosition ? `X: ${Math.round(headPosition.x)}, Y: ${Math.round(headPosition.y)}` : '未检测到'}
+                        <br>上次位置: ${lastHeadPosition ? `X: ${Math.round(lastHeadPosition.x)}, Y: ${Math.round(lastHeadPosition.y)}` : '无'}
+                        <br>方向: ${game.direction}
+                    `;
+                }
                 
                 // 分析头部动作
                 if (headPosition && lastHeadPosition) {
@@ -453,14 +478,14 @@
             requestAnimationFrame(headTrackingLoop);
         }
         
-        // 检测头部位置（简化版，基于亮度和颜色）
+        // 检测头部位置（优化版，基于亮度和颜色）
         function detectHeadPosition() {
             let imageData = headCtx.getImageData(0, 0, headCanvas.width, headCanvas.height);
             let data = imageData.data;
             
             let headPixels = [];
             
-            // 简单的头部检测：寻找肤色区域
+            // 优化的肤色检测：增加容错性
             for (let y = 0; y < headCanvas.height; y++) {
                 for (let x = 0; x < headCanvas.width; x++) {
                     let index = (y * headCanvas.width + x) * 4;
@@ -468,18 +493,18 @@
                     let g = data[index + 1];
                     let b = data[index + 2];
                     
-                    // 简单的肤色检测
-                    if (r > 95 && g > 40 && b > 20 && 
+                    // 优化的肤色检测算法，增加容错性
+                    if (r > 80 && g > 30 && b > 10 && 
                         r > g && r > b && 
-                        (r - g) > 15 && 
-                        Math.abs(r - b) > 15) {
+                        (r - g) > 10 && 
+                        Math.abs(r - b) > 10) {
                         headPixels.push({ x, y });
                     }
                 }
             }
             
             // 如果找到足够的头部像素，计算中心点
-            if (headPixels.length > 100) {
+            if (headPixels.length > 50) { // 降低阈值，提高检测率
                 let sumX = 0;
                 let sumY = 0;
                 
@@ -521,11 +546,17 @@
                         // 右转
                         if (game.direction !== 'left') {
                             game.direction = 'right';
+                            if (debugMode) {
+                                console.log('头部动作：右转');
+                            }
                         }
                     } else {
                         // 左转
                         if (game.direction !== 'right') {
                             game.direction = 'left';
+                            if (debugMode) {
+                                console.log('头部动作：左转');
+                            }
                         }
                     }
                 } else {
@@ -534,11 +565,17 @@
                         // 低头
                         if (game.direction !== 'up') {
                             game.direction = 'down';
+                            if (debugMode) {
+                                console.log('头部动作：低头（向下）');
+                            }
                         }
                     } else {
                         // 抬头
                         if (game.direction !== 'down') {
                             game.direction = 'up';
+                            if (debugMode) {
+                                console.log('头部动作：抬头（向上）');
+                            }
                         }
                     }
                 }
