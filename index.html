@@ -153,14 +153,12 @@
     </div>
     
     <script>
-        // 游戏变量
         let canvas = document.getElementById('gameCanvas');
         let ctx = canvas.getContext('2d');
         let scoreElement = document.getElementById('score');
         let gameOverElement = document.getElementById('gameOver');
         let finalScoreElement = document.getElementById('finalScore');
         
-        // 游戏状态
         let game = {
             snake: [],
             food: {},
@@ -172,11 +170,9 @@
             gameLoop: null
         };
         
-        // 网格大小和初始位置
         const gridSize = 20;
         const tileCount = canvas.width / gridSize;
         
-        // 初始化游戏
         function initGame() {
             game.snake = [];
             game.direction = 'right';
@@ -347,7 +343,6 @@
             }
         });
         
-        // 摄像头变量
         let video = document.getElementById('videoFeed');
         let stream = null;
         
@@ -366,75 +361,64 @@
         
         requestCameraAccess();
         
-        // 头部跟踪 - 简单版
-        let headCanvas = document.createElement('canvas');
-        let headCtx = headCanvas.getContext('2d');
-        headCanvas.width = 320;
-        headCanvas.height = 240;
-        document.body.appendChild(headCanvas);
-        headCanvas.style.display = 'none';
+        // 使用运动检测而不是肤色检测
+        let motionCanvas = document.createElement('canvas');
+        let motionCtx = motionCanvas.getContext('2d');
+        motionCanvas.width = 320;
+        motionCanvas.height = 240;
+        document.body.appendChild(motionCanvas);
+        motionCanvas.style.display = 'none';
         
+        let prevFrame = null;
         let centerX = 0, centerY = 0;
         let isCalibrated = false;
-        let positions = [];
-        let lastChange = 0;
+        let lastActionTime = 0;
         
-        // 调试信息
         let debugDiv = document.createElement('div');
         debugDiv.style.cssText = 'position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.8);color:white;padding:10px;border-radius:5px;z-index:1000;font-size:12px;';
         document.body.appendChild(debugDiv);
         
-        function trackHead() {
+        function detectMotion() {
             if (!video.srcObject) {
-                requestAnimationFrame(trackHead);
+                requestAnimationFrame(detectMotion);
                 return;
             }
             
-            headCtx.drawImage(video, 0, 0, headCanvas.width, headCanvas.height);
-            let imageData = headCtx.getImageData(0, 0, headCanvas.width, headCanvas.height);
-            let data = imageData.data;
+            motionCtx.drawImage(video, 0, 0, motionCanvas.width, motionCanvas.height);
+            let currentFrame = motionCtx.getImageData(0, 0, motionCanvas.width, motionCanvas.height);
             
-            let skinPixels = [];
-            
-            for (let y = 0; y < headCanvas.height; y++) {
-                for (let x = 0; x < headCanvas.width; x++) {
-                    let i = (y * headCanvas.width + x) * 4;
-                    let r = data[i];
-                    let g = data[i + 1];
-                    let b = data[i + 2];
-                    
-                    if (r > 95 && g > 40 && b > 20 && 
-                        r > g && r > b && 
-                        Math.abs(r - g) > 15) {
-                        skinPixels.push({x, y});
+            if (prevFrame) {
+                let motionX = 0, motionY = 0, motionCount = 0;
+                let threshold = 30;
+                
+                for (let y = 0; y < motionCanvas.height; y += 4) {
+                    for (let x = 0; x < motionCanvas.width; x += 4) {
+                        let i = (y * motionCanvas.width + x) * 4;
+                        
+                        let diff = Math.abs(currentFrame.data[i] - prevFrame.data[i]) +
+                                   Math.abs(currentFrame.data[i+1] - prevFrame.data[i+1]) +
+                                   Math.abs(currentFrame.data[i+2] - prevFrame.data[i+2]);
+                        
+                        if (diff > threshold) {
+                            motionX += x;
+                            motionY += y;
+                            motionCount++;
+                        }
                     }
                 }
-            }
-            
-            if (skinPixels.length > 100) {
-                let sumX = 0, sumY = 0;
-                for (let p of skinPixels) {
-                    sumX += p.x;
-                    sumY += p.y;
-                }
-                let currentX = sumX / skinPixels.length;
-                let currentY = sumY / skinPixels.length;
                 
-                positions.push({x: currentX, y: currentY});
-                if (positions.length > 8) positions.shift();
-                
-                let avgX = positions.reduce((a, b) => a + b.x, 0) / positions.length;
-                let avgY = positions.reduce((a, b) => a + b.y, 0) / positions.length;
-                
-                if (!isCalibrated && positions.length > 5) {
-                    centerX = avgX;
-                    centerY = avgY;
-                    isCalibrated = true;
-                }
-                
-                if (isCalibrated) {
-                    let dx = avgX - centerX;
-                    let dy = avgY - centerY;
+                if (motionCount > 50) {
+                    let avgMotionX = motionX / motionCount;
+                    let avgMotionY = motionY / motionCount;
+                    
+                    if (!isCalibrated) {
+                        centerX = avgMotionX;
+                        centerY = avgMotionY;
+                        isCalibrated = true;
+                    }
+                    
+                    let dx = avgMotionX - centerX;
+                    let dy = avgMotionY - centerY;
                     let now = Date.now();
                     
                     debugDiv.innerHTML = `
@@ -446,29 +430,29 @@
                         状态: ${game.isRunning ? '运行中' : '暂停'}
                     `;
                     
-                    if (now - lastChange > 300) {
+                    if (now - lastActionTime > 400) {
                         if (Math.abs(dx) > Math.abs(dy)) {
-                            if (dx > 12) {
+                            if (dx > 15) {
                                 if (game.direction !== 'right') {
                                     game.direction = 'left';
-                                    lastChange = now;
+                                    lastActionTime = now;
                                 }
-                            } else if (dx < -12) {
+                            } else if (dx < -15) {
                                 if (game.direction !== 'left') {
                                     game.direction = 'right';
-                                    lastChange = now;
+                                    lastActionTime = now;
                                 }
                             }
                         } else {
-                            if (dy > 12) {
+                            if (dy > 15) {
                                 if (game.direction !== 'down') {
                                     game.direction = 'up';
-                                    lastChange = now;
+                                    lastActionTime = now;
                                 }
-                            } else if (dy < -12) {
+                            } else if (dy < -15) {
                                 if (game.direction !== 'up') {
                                     game.direction = 'down';
-                                    lastChange = now;
+                                    lastActionTime = now;
                                 }
                             }
                         }
@@ -476,10 +460,11 @@
                 }
             }
             
-            requestAnimationFrame(trackHead);
+            prevFrame = currentFrame;
+            requestAnimationFrame(detectMotion);
         }
         
-        trackHead();
+        detectMotion();
     </script>
 </body>
 </html>
