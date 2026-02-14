@@ -421,8 +421,8 @@
         let headCanvas = document.createElement('canvas');
         let headCtx = headCanvas.getContext('2d');
         let lastHeadPosition = null;
-        let movementThreshold = 15; // 动作检测阈值
-        let actionCooldown = 200; // 动作识别冷却时间（毫秒）
+        let movementThreshold = 3; // 动作检测阈值（最高灵敏度）
+        let actionCooldown = 50; // 动作识别冷却时间（毫秒，最快响应）
         let lastActionTime = 0;
         let debugMode = true; // 启用调试模式
         
@@ -465,6 +465,7 @@
                         <br>游戏方向: ${game.direction}
                         <br>游戏状态: ${game.isRunning ? '运行中' : '已停止'}
                         <br>最后动作时间: ${lastActionTime ? Date.now() - lastActionTime + 'ms前' : '无'}
+                        <br>阈值: ${movementThreshold}px, 冷却: ${actionCooldown}ms
                     `;
                 }
                 
