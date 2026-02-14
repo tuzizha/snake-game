@@ -421,13 +421,10 @@
         let headCanvas = document.createElement('canvas');
         let headCtx = headCanvas.getContext('2d');
         let lastHeadPosition = null;
-        let stablePosition = null; // 稳定的头部位置
-        let positionHistory = []; // 位置历史记录
-        let movementThreshold = 20; // 动作检测阈值
-        let actionCooldown = 250; // 动作识别冷却时间（毫秒）
+        let movementThreshold = 15; // 动作检测阈值
+        let actionCooldown = 200; // 动作识别冷却时间（毫秒）
         let lastActionTime = 0;
         let debugMode = true; // 启用调试模式
-        let historyLength = 5; // 历史记录长度
         
         // 设置头部检测画布大小
         headCanvas.width = 320;
@@ -446,7 +443,7 @@
         debugElement.style.borderRadius = '5px';
         debugElement.style.fontSize = '12px';
         debugElement.style.zIndex = '1000';
-        debugElement.style.maxWidth = '250px';
+        debugElement.style.maxWidth = '300px';
         if (debugMode) {
             document.body.appendChild(debugElement);
         }
@@ -460,59 +457,28 @@
                 // 检测头部位置
                 let headPosition = detectHeadPosition();
                 
-                if (headPosition) {
-                    // 添加到位置历史
-                    positionHistory.push(headPosition);
-                    if (positionHistory.length > historyLength) {
-                        positionHistory.shift();
-                    }
-                    
-                    // 计算平均位置（平滑处理）
-                    let avgPosition = calculateAveragePosition(positionHistory);
-                    
-                    // 更新调试信息
-                    if (debugMode) {
-                        debugElement.innerHTML = `
-                            头部位置: ${headPosition ? `X: ${Math.round(headPosition.x)}, Y: ${Math.round(headPosition.y)}` : '未检测到'}
-                            <br>平均位置: X: ${Math.round(avgPosition.x)}, Y: ${Math.round(avgPosition.y)}
-                            <br>稳定位置: ${stablePosition ? `X: ${Math.round(stablePosition.x)}, Y: ${Math.round(stablePosition.y)}` : '未设置'}
-                            <br>游戏方向: ${game.direction}
-                            <br>检测状态: ${lastActionTime ? '活跃' : '等待'}
-                        `;
-                    }
-                    
-                    // 分析头部动作
-                    if (stablePosition && positionHistory.length >= historyLength) {
-                        analyzeHeadMovement(avgPosition, stablePosition);
-                    }
-                    
-                    // 更新稳定位置（每秒更新一次）
-                    if (!stablePosition || Date.now() % 1000 < 50) {
-                        stablePosition = avgPosition;
-                    }
+                // 更新调试信息
+                if (debugMode) {
+                    debugElement.innerHTML = `
+                        头部位置: ${headPosition ? `X: ${Math.round(headPosition.x)}, Y: ${Math.round(headPosition.y)}` : '未检测到'}
+                        <br>上次位置: ${lastHeadPosition ? `X: ${Math.round(lastHeadPosition.x)}, Y: ${Math.round(lastHeadPosition.y)}` : '无'}
+                        <br>游戏方向: ${game.direction}
+                        <br>游戏状态: ${game.isRunning ? '运行中' : '已停止'}
+                        <br>最后动作时间: ${lastActionTime ? Date.now() - lastActionTime + 'ms前' : '无'}
+                    `;
                 }
+                
+                // 分析头部动作
+                if (headPosition && lastHeadPosition) {
+                    analyzeHeadMovement(headPosition, lastHeadPosition);
+                }
+                
+                // 更新最后头部位置
+                lastHeadPosition = headPosition;
             }
             
             // 继续循环
             requestAnimationFrame(headTrackingLoop);
-        }
-        
-        // 计算平均位置
-        function calculateAveragePosition(positions) {
-            if (positions.length === 0) return { x: 0, y: 0 };
-            
-            let sumX = 0;
-            let sumY = 0;
-            
-            for (let pos of positions) {
-                sumX += pos.x;
-                sumY += pos.y;
-            }
-            
-            return {
-                x: sumX / positions.length,
-                y: sumY / positions.length
-            };
         }
         
         // 检测头部位置（优化版，基于亮度和颜色）
@@ -559,7 +525,7 @@
             return null;
         }
         
-        // 分析头部移动（改进版）
+        // 分析头部移动（简化版）
         function analyzeHeadMovement(current, previous) {
             let now = Date.now();
             
@@ -576,8 +542,6 @@
             
             // 只有当移动距离超过阈值时才识别为动作
             if (distance > movementThreshold) {
-                let actionDetected = false;
-                
                 // 判断动作类型
                 if (Math.abs(dx) > Math.abs(dy)) {
                     // 水平移动（左右转）
@@ -585,7 +549,7 @@
                         // 右转
                         if (game.direction !== 'left') {
                             game.direction = 'right';
-                            actionDetected = true;
+                            lastActionTime = now;
                             if (debugMode) {
                                 console.log('头部动作：右转', `距离: ${Math.round(distance)}`);
                             }
@@ -594,7 +558,7 @@
                         // 左转
                         if (game.direction !== 'right') {
                             game.direction = 'left';
-                            actionDetected = true;
+                            lastActionTime = now;
                             if (debugMode) {
                                 console.log('头部动作：左转', `距离: ${Math.round(distance)}`);
                             }
@@ -606,7 +570,7 @@
                         // 低头
                         if (game.direction !== 'up') {
                             game.direction = 'down';
-                            actionDetected = true;
+                            lastActionTime = now;
                             if (debugMode) {
                                 console.log('头部动作：低头（向下）', `距离: ${Math.round(distance)}`);
                             }
@@ -615,23 +579,12 @@
                         // 抬头
                         if (game.direction !== 'down') {
                             game.direction = 'up';
-                            actionDetected = true;
+                            lastActionTime = now;
                             if (debugMode) {
                                 console.log('头部动作：抬头（向上）', `距离: ${Math.round(distance)}`);
                             }
                         }
                     }
-                }
-                
-                // 如果检测到动作，更新稳定位置和时间
-                if (actionDetected) {
-                    lastActionTime = now;
-                    // 延迟更新稳定位置，允许用户回到中心位置
-                    setTimeout(() => {
-                        if (positionHistory.length > 0) {
-                            stablePosition = calculateAveragePosition(positionHistory);
-                        }
-                    }, 500);
                 }
             }
         }
