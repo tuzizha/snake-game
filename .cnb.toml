@@ -1,0 +1,33 @@
+# Cloud Native Buildpacks Configuration
+# This file configures how your application is built and deployed
+
+# Application metadata
+[metadata]
+name = "snake-game"
+version = "1.0.0"
+description = "头部动作控制的贪吃蛇游戏"
+
+# Build configuration
+[build]
+  # Build environment
+  image = "nginx:alpine"
+  
+  # Build commands
+  [build.script]
+    - "echo 'Building snake game...'"
+    - "ls -la"
+    - "mkdir -p /usr/share/nginx/html"
+    - "cp index.html /usr/share/nginx/html/"
+
+# Deploy configuration
+[deploy]
+  # Deploy type
+  type = "static"
+  # Static files directory
+  root = "/usr/share/nginx/html"
+  # Port
+  port = 80
+
+# Environment variables
+[env]
+  NODE_ENV = "production"

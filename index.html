@@ -265,6 +265,19 @@
                     break;
             }
             
+            // 处理边界穿越
+            if (head.x < 0) {
+                head.x = tileCount - 1;
+            } else if (head.x >= tileCount) {
+                head.x = 0;
+            }
+            
+            if (head.y < 0) {
+                head.y = tileCount - 1;
+            } else if (head.y >= tileCount) {
+                head.y = 0;
+            }
+            
             // 将新头部添加到蛇身
             game.snake.unshift(head);
             
@@ -291,11 +304,6 @@
         // 检查碰撞
         function checkCollision() {
             let head = game.snake[0];
-            
-            // 检查边界碰撞
-            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
-                return true;
-            }
             
             // 检查自身碰撞
             for (let i = 1; i < game.snake.length; i++) {
