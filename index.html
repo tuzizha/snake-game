@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇游戏 - 头部动作控制</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+        }
+        
+        #gameCanvas {
+            background-color: #000;
+            border-radius: 8px;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        #videoFeed {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 100px;
+            height: 75px;
+            border-radius: 4px;
+            object-fit: cover;
+            border: 2px solid #fff;
+            z-index: 10;
+        }
+        
+        .game-info {
+            text-align: center;
+            margin: 10px 0;
+        }
+        
+        .score {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        button:active {
+            transform: scale(0.95);
+        }
+        
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 20;
+            display: none;
+        }
+        
+        .game-over h2 {
+            margin-bottom: 10px;
+        }
+        
+        .game-over p {
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+        
+        @media (max-width: 480px) {
+            #gameCanvas {
+                width: 100%;
+                height: auto;
+            }
+            
+            #videoFeed {
+                width: 80px;
+                height: 60px;
+            }
+            
+            .score {
+                font-size: 20px;
+            }
+            
+            button {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <video id="videoFeed" autoplay playsinline></video>
+        
+        <div class="game-info">
+            <div class="score">分数: <span id="score">0</span></div>
+        </div>
+        
+        <div class="controls">
+            <button id="startBtn">开始游戏</button>
+            <button id="pauseBtn">暂停</button>
+            <button id="restartBtn">重新开始</button>
+        </div>
+        
+        <div class="game-over" id="gameOver">
+            <h2>游戏结束</h2>
+            <p>最终分数: <span id="finalScore">0</span></p>
+            <button id="playAgainBtn">再玩一次</button>
+        </div>
+    </div>
+    
+    <script>
+        // 游戏变量
+        let canvas = document.getElementById('gameCanvas');
+        let ctx = canvas.getContext('2d');
+        let scoreElement = document.getElementById('score');
+        let gameOverElement = document.getElementById('gameOver');
+        let finalScoreElement = document.getElementById('finalScore');
+        
+        // 游戏状态
+        let game = {
+            snake: [],
+            food: {},
+            direction: 'right',
+            score: 0,
+            speed: 100,
+            isRunning: false,
+            isPaused: false,
+            gameLoop: null
+        };
+        
+        // 网格大小和初始位置
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+        
+        // 初始化游戏
+        function initGame() {
+            // 重置游戏状态
+            game.snake = [];
+            game.direction = 'right';
+            game.score = 0;
+            game.isRunning = false;
+            game.isPaused = false;
+            
+            // 创建初始蛇身
+            for (let i = 5; i >= 0; i--) {
+                game.snake.push({
+                    x: i,
+                    y: tileCount / 2
+                });
+            }
+            
+            // 生成初始食物
+            generateFood();
+            
+            // 更新分数显示
+            updateScore();
+            
+            // 隐藏游戏结束界面
+            gameOverElement.style.display = 'none';
+        }
+        
+        // 生成食物
+        function generateFood() {
+            game.food = {
+                x: Math.floor(Math.random() * tileCount),
+                y: Math.floor(Math.random() * tileCount)
+            };
+            
+            // 确保食物不会生成在蛇身上
+            for (let i = 0; i < game.snake.length; i++) {
+                if (game.food.x === game.snake[i].x && game.food.y === game.snake[i].y) {
+                    generateFood();
+                    return;
+                }
+            }
+        }
+        
+        // 更新分数显示
+        function updateScore() {
+            scoreElement.textContent = game.score;
+        }
+        
+        // 绘制游戏
+        function drawGame() {
+            // 清空画布
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制蛇
+            for (let i = 0; i < game.snake.length; i++) {
+                ctx.fillStyle = i === 0 ? '#4CAF50' : '#45a049';
+                ctx.fillRect(game.snake[i].x * gridSize, game.snake[i].y * gridSize, gridSize - 2, gridSize - 2);
+            }
+            
+            // 绘制食物
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(game.food.x * gridSize, game.food.y * gridSize, gridSize - 2, gridSize - 2);
+        }
+        
+        // 移动蛇
+        function moveSnake() {
+            // 获取蛇头位置
+            let head = {
+                x: game.snake[0].x,
+                y: game.snake[0].y
+            };
+            
+            // 根据方向移动蛇头
+            switch (game.direction) {
+                case 'up':
+                    head.y--;
+                    break;
+                case 'down':
+                    head.y++;
+                    break;
+                case 'left':
+                    head.x--;
+                    break;
+                case 'right':
+                    head.x++;
+                    break;
+            }
+            
+            // 将新头部添加到蛇身
+            game.snake.unshift(head);
+            
+            // 检查是否吃到食物
+            if (head.x === game.food.x && head.y === game.food.y) {
+                // 增加分数
+                game.score++;
+                updateScore();
+                
+                // 生成新食物
+                generateFood();
+            } else {
+                // 移除蛇尾
+                game.snake.pop();
+            }
+            
+            // 检查碰撞
+            if (checkCollision()) {
+                endGame();
+                return;
+            }
+        }
+        
+        // 检查碰撞
+        function checkCollision() {
+            let head = game.snake[0];
+            
+            // 检查边界碰撞
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                return true;
+            }
+            
+            // 检查自身碰撞
+            for (let i = 1; i < game.snake.length; i++) {
+                if (head.x === game.snake[i].x && head.y === game.snake[i].y) {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+        
+        // 游戏主循环
+        function gameLoop() {
+            if (!game.isPaused && game.isRunning) {
+                moveSnake();
+                drawGame();
+            }
+            
+            game.gameLoop = setTimeout(gameLoop, game.speed);
+        }
+        
+        // 开始游戏
+        function startGame() {
+            if (!game.isRunning) {
+                game.isRunning = true;
+                game.isPaused = false;
+                gameLoop();
+            }
+        }
+        
+        // 暂停游戏
+        function pauseGame() {
+            game.isPaused = !game.isPaused;
+        }
+        
+        // 结束游戏
+        function endGame() {
+            game.isRunning = false;
+            clearTimeout(game.gameLoop);
+            
+            // 显示游戏结束界面
+            finalScoreElement.textContent = game.score;
+            gameOverElement.style.display = 'block';
+        }
+        
+        // 重新开始游戏
+        function restartGame() {
+            clearTimeout(game.gameLoop);
+            initGame();
+            startGame();
+        }
+        
+        // 初始化游戏
+        initGame();
+        drawGame();
+        
+        // 按钮事件监听器
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('pauseBtn').addEventListener('click', pauseGame);
+        document.getElementById('restartBtn').addEventListener('click', restartGame);
+        document.getElementById('playAgainBtn').addEventListener('click', restartGame);
+        
+        // 键盘控制（备用）
+        document.addEventListener('keydown', function(e) {
+            switch (e.key) {
+                case 'ArrowUp':
+                    if (game.direction !== 'down') game.direction = 'up';
+                    break;
+                case 'ArrowDown':
+                    if (game.direction !== 'up') game.direction = 'down';
+                    break;
+                case 'ArrowLeft':
+                    if (game.direction !== 'right') game.direction = 'left';
+                    break;
+                case 'ArrowRight':
+                    if (game.direction !== 'left') game.direction = 'right';
+                    break;
+            }
+        });
+        
+        // 摄像头变量
+        let video = document.getElementById('videoFeed');
+        let stream = null;
+        
+        // 请求摄像头访问
+        function requestCameraAccess() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+                    .then(function(mediaStream) {
+                        stream = mediaStream;
+                        video.srcObject = stream;
+                    })
+                    .catch(function(err) {
+                        console.error('无法访问摄像头:', err);
+                        alert('需要摄像头权限才能使用头部动作控制游戏');
+                    });
+            } else {
+                console.error('浏览器不支持摄像头访问');
+                alert('您的浏览器不支持摄像头访问');
+            }
+        }
+        
+        // 停止摄像头流
+        function stopCameraStream() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+        }
+        
+        // 初始化摄像头
+        requestCameraAccess();
+        
+        // 头部动作识别变量
+        let headCanvas = document.createElement('canvas');
+        let headCtx = headCanvas.getContext('2d');
+        let lastHeadPosition = null;
+        let movementThreshold = 15;
+        let actionCooldown = 300; // 动作识别冷却时间（毫秒）
+        let lastActionTime = 0;
+        
+        // 设置头部检测画布大小
+        headCanvas.width = 320;
+        headCanvas.height = 240;
+        headCanvas.style.display = 'none';
+        document.body.appendChild(headCanvas);
+        
+        // 头部动作识别主循环
+        function headTrackingLoop() {
+            if (video.srcObject) {
+                // 绘制视频帧到画布
+                headCtx.drawImage(video, 0, 0, headCanvas.width, headCanvas.height);
+                
+                // 检测头部位置
+                let headPosition = detectHeadPosition();
+                
+                // 分析头部动作
+                if (headPosition && lastHeadPosition) {
+                    analyzeHeadMovement(headPosition, lastHeadPosition);
+                }
+                
+                // 更新最后头部位置
+                lastHeadPosition = headPosition;
+            }
+            
+            // 继续循环
+            requestAnimationFrame(headTrackingLoop);
+        }
+        
+        // 检测头部位置（简化版，基于亮度和颜色）
+        function detectHeadPosition() {
+            let imageData = headCtx.getImageData(0, 0, headCanvas.width, headCanvas.height);
+            let data = imageData.data;
+            
+            let headPixels = [];
+            
+            // 简单的头部检测：寻找肤色区域
+            for (let y = 0; y < headCanvas.height; y++) {
+                for (let x = 0; x < headCanvas.width; x++) {
+                    let index = (y * headCanvas.width + x) * 4;
+                    let r = data[index];
+                    let g = data[index + 1];
+                    let b = data[index + 2];
+                    
+                    // 简单的肤色检测
+                    if (r > 95 && g > 40 && b > 20 && 
+                        r > g && r > b && 
+                        (r - g) > 15 && 
+                        Math.abs(r - b) > 15) {
+                        headPixels.push({ x, y });
+                    }
+                }
+            }
+            
+            // 如果找到足够的头部像素，计算中心点
+            if (headPixels.length > 100) {
+                let sumX = 0;
+                let sumY = 0;
+                
+                for (let pixel of headPixels) {
+                    sumX += pixel.x;
+                    sumY += pixel.y;
+                }
+                
+                return {
+                    x: sumX / headPixels.length,
+                    y: sumY / headPixels.length
+                };
+            }
+            
+            return null;
+        }
+        
+        // 分析头部移动
+        function analyzeHeadMovement(current, previous) {
+            let now = Date.now();
+            
+            // 检查冷却时间
+            if (now - lastActionTime < actionCooldown) {
+                return;
+            }
+            
+            let dx = current.x - previous.x;
+            let dy = current.y - previous.y;
+            
+            // 计算移动距离
+            let distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // 只有当移动距离超过阈值时才识别为动作
+            if (distance > movementThreshold) {
+                // 判断动作类型
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    // 水平移动（左右转）
+                    if (dx > 0) {
+                        // 右转
+                        if (game.direction !== 'left') {
+                            game.direction = 'right';
+                        }
+                    } else {
+                        // 左转
+                        if (game.direction !== 'right') {
+                            game.direction = 'left';
+                        }
+                    }
+                } else {
+                    // 垂直移动（上下）
+                    if (dy > 0) {
+                        // 低头
+                        if (game.direction !== 'up') {
+                            game.direction = 'down';
+                        }
+                    } else {
+                        // 抬头
+                        if (game.direction !== 'down') {
+                            game.direction = 'up';
+                        }
+                    }
+                }
+                
+                // 更新最后动作时间
+                lastActionTime = now;
+            }
+        }
+        
+        // 启动头部跟踪
+        function startHeadTracking() {
+            headTrackingLoop();
+        }
+        
+        // 初始化头部跟踪
+        startHeadTracking();
+    </script>
+</body>
+</html>
