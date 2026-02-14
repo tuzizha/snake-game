@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>颈椎贪吃蛇</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <style>
         * {
             margin: 0;
@@ -36,7 +38,7 @@
             margin: 0 auto;
         }
         
-        #videoFeed {
+        #input_video {
             position: absolute;
             top: 10px;
             right: 10px;
@@ -46,6 +48,19 @@
             object-fit: cover;
             border: 2px solid #fff;
             z-index: 10;
+            transform: scaleX(-1);
+        }
+        
+        #debug-canvas {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 320px;
+            height: 240px;
+            border: 2px solid #00ccff;
+            border-radius: 4px;
+            z-index: 10;
+            display: none;
         }
         
         .game-info {
@@ -85,6 +100,11 @@
             transform: scale(0.95);
         }
         
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
         .game-over {
             position: absolute;
             top: 50%;
@@ -108,13 +128,20 @@
             font-size: 18px;
         }
         
+        .status {
+            text-align: center;
+            margin: 10px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        
         @media (max-width: 480px) {
             #gameCanvas {
                 width: 100%;
                 height: auto;
             }
             
-            #videoFeed {
+            #input_video {
                 width: 80px;
                 height: 60px;
             }
@@ -133,338 +160,324 @@
 <body>
     <div class="game-container">
         <canvas id="gameCanvas" width="400" height="400"></canvas>
-        <video id="videoFeed" autoplay playsinline></video>
+        <video id="input_video" playsinline></video>
+        <canvas id="debug-canvas" width="320" height="240"></canvas>
+        
+        <div class="status" id="status-text">加载模型中...</div>
         
         <div class="game-info">
             <div class="score">分数: <span id="score">0</span></div>
+            <div style="margin-top: 5px;">检测动作: <span id="detected-action">-</span></div>
         </div>
         
         <div class="controls">
-            <button id="startBtn">开始游戏</button>
-            <button id="pauseBtn">暂停</button>
-            <button id="restartBtn">重新开始</button>
+            <button id="btn-start" disabled>开始游戏</button>
+            <button id="btn-restart">重新开始</button>
         </div>
         
-        <div class="game-over" id="gameOver">
+        <div class="game-over" id="game-over-screen">
             <h2>游戏结束</h2>
-            <p>最终分数: <span id="finalScore">0</span></p>
-            <button id="playAgainBtn">再玩一次</button>
+            <p>最终分数: <span id="final-score">0</span></p>
+            <button id="btn-restart-over">再玩一次</button>
         </div>
     </div>
     
     <script>
-        let canvas = document.getElementById('gameCanvas');
-        let ctx = canvas.getContext('2d');
-        let scoreElement = document.getElementById('score');
-        let gameOverElement = document.getElementById('gameOver');
-        let finalScoreElement = document.getElementById('finalScore');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const debugCanvas = document.getElementById('debug-canvas');
+        const debugCtx = debugCanvas.getContext('2d');
+        const videoElement = document.getElementById('input_video');
         
-        let game = {
-            snake: [],
-            food: {},
-            direction: 'right',
-            score: 0,
-            speed: 100,
-            isRunning: false,
-            isPaused: false,
-            gameLoop: null
-        };
+        const GRID_SIZE = 40;
+        const TILE_COUNT = canvas.width / GRID_SIZE;
+        const BASE_SPEED = 7;
         
-        const gridSize = 20;
-        const tileCount = canvas.width / gridSize;
+        let gameSpeed = BASE_SPEED;
+        let snake = [];
+        let food = { x: 0, y: 0 };
+        let dx = 0, dy = 0;
+        let score = 0;
+        let gameLoopId;
+        let isGameRunning = false;
+        
+        // MediaPipe 变量
+        let faceMesh;
+        let camera;
+        let lastNosePos = { x: 0.5, y: 0.5 };
+        let currentNoseSmoothed = { x: 0.5, y: 0.5 };
+        let lastDirectionTime = 0;
+        const DIRECTION_COOLDOWN = 300;
         
         function initGame() {
-            game.snake = [];
-            game.direction = 'right';
-            game.score = 0;
-            game.isRunning = false;
-            game.isPaused = false;
+            gameSpeed = BASE_SPEED;
             
-            for (let i = 5; i >= 0; i--) {
-                game.snake.push({
-                    x: i,
-                    y: tileCount / 2
-                });
-            }
+            snake = [
+                { x: Math.floor(TILE_COUNT / 2), y: Math.floor(TILE_COUNT / 2) },
+                { x: Math.floor(TILE_COUNT / 2) - 1, y: Math.floor(TILE_COUNT / 2) },
+                { x: Math.floor(TILE_COUNT / 2) - 2, y: Math.floor(TILE_COUNT / 2) }
+            ];
+            dx = 1;
+            dy = 0;
+            score = 0;
+            createFood();
+            isGameRunning = true;
             
-            generateFood();
-            updateScore();
-            gameOverElement.style.display = 'none';
+            document.getElementById('game-over-screen').classList.add('hidden');
+            document.getElementById('game-over-screen').style.display = 'none';
+            
+            if (gameLoopId) clearInterval(gameLoopId);
+            gameLoopId = setInterval(gameLoop, 1000 / gameSpeed);
         }
         
-        function generateFood() {
-            game.food = {
-                x: Math.floor(Math.random() * tileCount),
-                y: Math.floor(Math.random() * tileCount)
+        function createFood() {
+            food = {
+                x: Math.floor(Math.random() * TILE_COUNT),
+                y: Math.floor(Math.random() * TILE_COUNT)
             };
-            
-            for (let i = 0; i < game.snake.length; i++) {
-                if (game.food.x === game.snake[i].x && game.food.y === game.snake[i].y) {
-                    generateFood();
-                    return;
-                }
+            for (let part of snake) {
+                if (part.x === food.x && part.y === food.y) createFood();
             }
-        }
-        
-        function updateScore() {
-            scoreElement.textContent = game.score;
-        }
-        
-        function drawGame() {
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            for (let i = 0; i < game.snake.length; i++) {
-                ctx.fillStyle = i === 0 ? '#4CAF50' : '#45a049';
-                ctx.fillRect(game.snake[i].x * gridSize, game.snake[i].y * gridSize, gridSize - 2, gridSize - 2);
-            }
-            
-            ctx.fillStyle = '#ff0000';
-            ctx.fillRect(game.food.x * gridSize, game.food.y * gridSize, gridSize - 2, gridSize - 2);
-        }
-        
-        function moveSnake() {
-            let head = {
-                x: game.snake[0].x,
-                y: game.snake[0].y
-            };
-            
-            switch (game.direction) {
-                case 'up':
-                    head.y--;
-                    break;
-                case 'down':
-                    head.y++;
-                    break;
-                case 'left':
-                    head.x--;
-                    break;
-                case 'right':
-                    head.x++;
-                    break;
-            }
-            
-            if (head.x < 0) {
-                head.x = tileCount - 1;
-            } else if (head.x >= tileCount) {
-                head.x = 0;
-            }
-            
-            if (head.y < 0) {
-                head.y = tileCount - 1;
-            } else if (head.y >= tileCount) {
-                head.y = 0;
-            }
-            
-            game.snake.unshift(head);
-            
-            if (head.x === game.food.x && head.y === game.food.y) {
-                game.score++;
-                updateScore();
-                generateFood();
-            } else {
-                game.snake.pop();
-            }
-            
-            if (checkCollision()) {
-                endGame();
-                return;
-            }
-        }
-        
-        function checkCollision() {
-            let head = game.snake[0];
-            
-            for (let i = 1; i < game.snake.length; i++) {
-                if (head.x === game.snake[i].x && head.y === game.snake[i].y) {
-                    return true;
-                }
-            }
-            
-            return false;
         }
         
         function gameLoop() {
-            if (!game.isPaused && game.isRunning) {
-                moveSnake();
-                drawGame();
+            if (!isGameRunning) return;
+            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+            
+            if (head.x < 0) head.x = TILE_COUNT - 1;
+            if (head.x >= TILE_COUNT) head.x = 0;
+            if (head.y < 0) head.y = TILE_COUNT - 1;
+            if (head.y >= TILE_COUNT) head.y = 0;
+            
+            for (let part of snake) {
+                if (head.x === part.x && head.y === part.y) {
+                    gameOver();
+                    return;
+                }
             }
             
-            game.gameLoop = setTimeout(gameLoop, game.speed);
+            snake.unshift(head);
+            if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                document.getElementById('score').innerText = score;
+                createFood();
+            } else {
+                snake.pop();
+            }
+            drawGame();
         }
         
-        function startGame() {
-            if (!game.isRunning) {
-                game.isRunning = true;
-                game.isPaused = false;
-                gameLoop();
+        function drawGame() {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 1;
+            
+            for (let x = 0; x <= canvas.width; x += GRID_SIZE) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= canvas.height; y += GRID_SIZE) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            ctx.fillStyle = '#ff3333';
+            ctx.shadowColor = '#ff3333';
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            const foodRadius = GRID_SIZE / 2 - 4;
+            ctx.arc((food.x * GRID_SIZE) + GRID_SIZE / 2, (food.y * GRID_SIZE) + GRID_SIZE / 2, foodRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            snake.forEach((part, i) => {
+                ctx.fillStyle = i === 0 ? '#ccffdd' : '#00ff88';
+                ctx.fillRect(part.x * GRID_SIZE + 1, part.y * GRID_SIZE + 1, GRID_SIZE - 2, GRID_SIZE - 2);
+            });
+            
+            ctx.fillStyle = 'white';
+            ctx.font = '24px Arial';
+            ctx.fillText('分数: ' + score, 10, 35);
+        }
+        
+        function gameOver() {
+            isGameRunning = false;
+            clearInterval(gameLoopId);
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('game-over-screen').style.display = 'block';
+        }
+        
+        function lerp(start, end, amt) {
+            return (1 - amt) * start + amt * end;
+        }
+        
+        function checkMovementTrend(dX, dY) {
+            if (!isGameRunning) return;
+            
+            const now = Date.now();
+            if (now - lastDirectionTime < DIRECTION_COOLDOWN) return;
+            
+            const sliderVal = 50;
+            const baseThreshold = 0.032 - (sliderVal * 0.0003);
+            
+            const thresholdX = baseThreshold;
+            const thresholdY = baseThreshold * 0.8;
+            
+            let triggered = false;
+            let dirKey = null;
+            
+            if (Math.abs(dX) > Math.abs(dY)) {
+                if (dX > thresholdX) {
+                    dirKey = 'LEFT';
+                    triggered = true;
+                } else if (dX < -thresholdX) {
+                    dirKey = 'RIGHT';
+                    triggered = true;
+                }
+            } else {
+                if (dY < -thresholdY) {
+                    dirKey = 'UP';
+                    triggered = true;
+                } else if (dY > thresholdY) {
+                    dirKey = 'DOWN';
+                    triggered = true;
+                }
+            }
+            
+            if (triggered && dirKey) {
+                triggerControl(dirKey);
             }
         }
         
-        function pauseGame() {
-            game.isPaused = !game.isPaused;
-        }
-        
-        function endGame() {
-            game.isRunning = false;
-            clearTimeout(game.gameLoop);
-            finalScoreElement.textContent = game.score;
-            gameOverElement.style.display = 'block';
-        }
-        
-        function restartGame() {
-            clearTimeout(game.gameLoop);
-            initGame();
-            startGame();
-        }
-        
-        initGame();
-        drawGame();
-        
-        document.getElementById('startBtn').addEventListener('click', startGame);
-        document.getElementById('pauseBtn').addEventListener('click', pauseGame);
-        document.getElementById('restartBtn').addEventListener('click', restartGame);
-        document.getElementById('playAgainBtn').addEventListener('click', restartGame);
-        
-        document.addEventListener('keydown', function(e) {
-            switch (e.key) {
-                case 'ArrowUp':
-                    if (game.direction !== 'down') game.direction = 'up';
-                    break;
-                case 'ArrowDown':
-                    if (game.direction !== 'up') game.direction = 'down';
-                    break;
-                case 'ArrowLeft':
-                    if (game.direction !== 'right') game.direction = 'left';
-                    break;
-                case 'ArrowRight':
-                    if (game.direction !== 'left') game.direction = 'right';
-                    break;
+        function triggerControl(dirKey) {
+            const goingUp = dy === -1;
+            const goingDown = dy === 1;
+            const goingRight = dx === 1;
+            const goingLeft = dx === -1;
+            
+            let changed = false;
+            if (dirKey === 'LEFT' && !goingRight) { dx = -1; dy = 0; changed = true; }
+            if (dirKey === 'UP' && !goingDown) { dx = 0; dy = -1; changed = true; }
+            if (dirKey === 'RIGHT' && !goingLeft) { dx = 1; dy = 0; changed = true; }
+            if (dirKey === 'DOWN' && !goingUp) { dx = 0; dy = 1; changed = true; }
+            
+            if (changed) {
+                lastDirectionTime = Date.now();
+                const actionNames = { 'LEFT': '左转', 'RIGHT': '右转', 'UP': '抬头', 'DOWN': '低头' };
+                document.getElementById('detected-action').innerText = actionNames[dirKey];
+                document.getElementById('detected-action').style.color = '#ff0055';
+                setTimeout(() => {
+                    document.getElementById('detected-action').innerText = '-';
+                    document.getElementById('detected-action').style.color = '#666';
+                }, 500);
             }
+        }
+        
+        async function initMediaPipe() {
+            const statusText = document.getElementById('status-text');
+            const startBtn = document.getElementById('btn-start');
+            
+            faceMesh = new FaceMesh({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+                }
+            });
+            
+            faceMesh.setOptions({
+                maxNumFaces: 1,
+                refineLandmarks: true,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+            
+            faceMesh.onResults(onResults);
+            
+            camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    await faceMesh.send({ image: videoElement });
+                },
+                width: 320,
+                height: 240
+            });
+            
+            try {
+                await camera.start();
+                statusText.innerText = "Ready";
+                startBtn.disabled = false;
+            } catch (e) {
+                statusText.innerText = "Camera Error";
+                console.error(e);
+            }
+        }
+        
+        function onResults(results) {
+            debugCtx.save();
+            debugCtx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
+            
+            debugCtx.strokeStyle = 'rgba(255,255,255,0.1)';
+            debugCtx.beginPath();
+            debugCtx.moveTo(160, 0);
+            debugCtx.lineTo(160, 240);
+            debugCtx.moveTo(0, 120);
+            debugCtx.lineTo(320, 120);
+            debugCtx.stroke();
+            
+            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                const landmarks = results.multiFaceLandmarks[0];
+                const rawNose = landmarks[1];
+                
+                currentNoseSmoothed.x = lerp(currentNoseSmoothed.x, rawNose.x, 0.5);
+                currentNoseSmoothed.y = lerp(currentNoseSmoothed.y, rawNose.y, 0.5);
+                
+                const deltaX = currentNoseSmoothed.x - lastNosePos.x;
+                const deltaY = currentNoseSmoothed.y - lastNosePos.y;
+                
+                lastNosePos.x = currentNoseSmoothed.x;
+                lastNosePos.y = currentNoseSmoothed.y;
+                
+                checkMovementTrend(deltaX, deltaY);
+                
+                const w = debugCanvas.width;
+                const h = debugCanvas.height;
+                const nx = w * (1 - currentNoseSmoothed.x);
+                const ny = h * currentNoseSmoothed.y;
+                
+                debugCtx.fillStyle = '#00ccff';
+                debugCtx.beginPath();
+                debugCtx.arc(nx, ny, 6, 0, 2 * Math.PI);
+                debugCtx.fill();
+                
+                debugCtx.strokeStyle = '#ff0055';
+                debugCtx.lineWidth = 3;
+                debugCtx.beginPath();
+                debugCtx.moveTo(nx, ny);
+                debugCtx.lineTo(nx + deltaX * 500, ny + deltaY * 500);
+                debugCtx.stroke();
+            } else {
+                document.getElementById('detected-action').innerText = "-";
+            }
+            debugCtx.restore();
+        }
+        
+        document.getElementById('btn-start').addEventListener('click', initGame);
+        document.getElementById('btn-restart').addEventListener('click', initGame);
+        document.getElementById('btn-restart-over').addEventListener('click', initGame);
+        
+        document.addEventListener('keydown', e => {
+            if (!isGameRunning) return;
+            if (e.key === 'ArrowUp') triggerControl('UP');
+            if (e.key === 'ArrowDown') triggerControl('DOWN');
+            if (e.key === 'ArrowLeft') triggerControl('LEFT');
+            if (e.key === 'ArrowRight') triggerControl('RIGHT');
         });
         
-        let video = document.getElementById('videoFeed');
-        let stream = null;
-        
-        function requestCameraAccess() {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-                    .then(function(mediaStream) {
-                        stream = mediaStream;
-                        video.srcObject = stream;
-                    })
-                    .catch(function(err) {
-                        console.error('无法访问摄像头:', err);
-                    });
-            }
-        }
-        
-        requestCameraAccess();
-        
-        // 使用运动检测而不是肤色检测
-        let motionCanvas = document.createElement('canvas');
-        let motionCtx = motionCanvas.getContext('2d');
-        motionCanvas.width = 320;
-        motionCanvas.height = 240;
-        document.body.appendChild(motionCanvas);
-        motionCanvas.style.display = 'none';
-        
-        let prevFrame = null;
-        let centerX = 0, centerY = 0;
-        let isCalibrated = false;
-        let lastActionTime = 0;
-        
-        let debugDiv = document.createElement('div');
-        debugDiv.style.cssText = 'position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.8);color:white;padding:10px;border-radius:5px;z-index:1000;font-size:12px;';
-        document.body.appendChild(debugDiv);
-        
-        function detectMotion() {
-            if (!video.srcObject) {
-                requestAnimationFrame(detectMotion);
-                return;
-            }
-            
-            motionCtx.drawImage(video, 0, 0, motionCanvas.width, motionCanvas.height);
-            let currentFrame = motionCtx.getImageData(0, 0, motionCanvas.width, motionCanvas.height);
-            
-            if (prevFrame) {
-                let motionX = 0, motionY = 0, motionCount = 0;
-                let threshold = 30;
-                
-                for (let y = 0; y < motionCanvas.height; y += 4) {
-                    for (let x = 0; x < motionCanvas.width; x += 4) {
-                        let i = (y * motionCanvas.width + x) * 4;
-                        
-                        let diff = Math.abs(currentFrame.data[i] - prevFrame.data[i]) +
-                                   Math.abs(currentFrame.data[i+1] - prevFrame.data[i+1]) +
-                                   Math.abs(currentFrame.data[i+2] - prevFrame.data[i+2]);
-                        
-                        if (diff > threshold) {
-                            motionX += x;
-                            motionY += y;
-                            motionCount++;
-                        }
-                    }
-                }
-                
-                if (motionCount > 50) {
-                    let avgMotionX = motionX / motionCount;
-                    let avgMotionY = motionY / motionCount;
-                    
-                    if (!isCalibrated) {
-                        centerX = avgMotionX;
-                        centerY = avgMotionY;
-                        isCalibrated = true;
-                    }
-                    
-                    let dx = avgMotionX - centerX;
-                    let dy = avgMotionY - centerY;
-                    let now = Date.now();
-                    
-                    debugDiv.innerHTML = `
-                        <b>颈椎贪吃蛇</b><br>
-                        左转→蛇右 | 右转→蛇左<br>
-                        抬头→蛇下 | 低头→蛇上<br><br>
-                        偏移: dx=${Math.round(dx)}, dy=${Math.round(dy)}<br>
-                        方向: ${game.direction}<br>
-                        状态: ${game.isRunning ? '运行中' : '暂停'}
-                    `;
-                    
-                    if (now - lastActionTime > 400) {
-                        if (Math.abs(dx) > Math.abs(dy)) {
-                            if (dx > 15) {
-                                if (game.direction !== 'right') {
-                                    game.direction = 'left';
-                                    lastActionTime = now;
-                                }
-                            } else if (dx < -15) {
-                                if (game.direction !== 'left') {
-                                    game.direction = 'right';
-                                    lastActionTime = now;
-                                }
-                            }
-                        } else {
-                            if (dy > 15) {
-                                if (game.direction !== 'down') {
-                                    game.direction = 'up';
-                                    lastActionTime = now;
-                                }
-                            } else if (dy < -15) {
-                                if (game.direction !== 'up') {
-                                    game.direction = 'down';
-                                    lastActionTime = now;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            
-            prevFrame = currentFrame;
-            requestAnimationFrame(detectMotion);
-        }
-        
-        detectMotion();
+        initMediaPipe();
     </script>
 </body>
 </html>
