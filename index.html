@@ -14,47 +14,51 @@
         }
         
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+            background-color: #f5f5f7;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
             overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         
         .game-container {
             position: relative;
             width: 100%;
-            max-width: 400px;
+            max-width: 420px;
             margin: 20px auto;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            padding: 0;
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
         }
         
         #gameCanvas {
-            background-color: #000;
-            border-radius: 12px;
+            background-color: #1d1d1f;
+            border-radius: 0;
             display: block;
             margin: 0 auto;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-            border: 3px solid #333;
+            box-shadow: none;
+            border: none;
         }
         
         #input_video {
             position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 100px;
-            height: 75px;
-            border-radius: 4px;
+            top: 16px;
+            right: 16px;
+            width: 80px;
+            height: 60px;
+            border-radius: 12px;
             object-fit: cover;
-            border: 2px solid #fff;
+            border: none;
             z-index: 10;
             transform: scaleX(-1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
         
         #debug-canvas {
@@ -63,73 +67,78 @@
             left: 10px;
             width: 320px;
             height: 240px;
-            border: 2px solid #00ccff;
-            border-radius: 4px;
+            border: none;
+            border-radius: 12px;
             z-index: 10;
             display: none;
         }
         
         .game-info {
             text-align: center;
-            margin: 15px 0;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 12px;
+            margin: 0;
+            background: #f5f5f7;
+            padding: 20px 24px;
+            border-radius: 0 0 24px 24px;
         }
         
         .score {
-            font-size: 28px;
-            font-weight: bold;
-            color: #ffd700;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            font-size: 24px;
+            font-weight: 600;
+            color: #1d1d1f;
+            letter-spacing: -0.5px;
         }
         
         .game-info .action-display {
-            font-size: 18px;
-            color: white;
-            margin-top: 10px;
+            font-size: 14px;
+            color: #86868b;
+            margin-top: 8px;
+            font-weight: 400;
+            letter-spacing: -0.2px;
         }
         
         .game-info .action-display.warning {
-            color: #ff6b6b;
-            font-weight: bold;
-            animation: pulse 1s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            color: #ff3b30;
+            font-weight: 500;
+            animation: none;
         }
         
         .controls {
             display: flex;
             justify-content: center;
-            gap: 10px;
-            margin: 10px 0;
+            gap: 12px;
+            margin: 16px 0;
         }
         
         button {
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: 500;
             border: none;
-            border-radius: 4px;
-            background-color: #4CAF50;
+            border-radius: 12px;
+            background-color: #007AFF;
             color: white;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: all 0.2s ease;
+            letter-spacing: -0.3px;
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
         }
         
         button:hover {
-            background-color: #45a049;
+            background-color: #0066d6;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+            transform: translateY(-1px);
         }
         
         button:active {
-            transform: scale(0.95);
+            transform: translateY(0);
+            box-shadow: 0 2px 6px rgba(0, 122, 255, 0.2);
         }
         
         button:disabled {
-            background-color: #ccc;
+            background-color: #e5e5ea;
+            color: #8e8e93;
             cursor: not-allowed;
+            box-shadow: none;
         }
         
         .game-over {
@@ -137,49 +146,58 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            color: #1d1d1f;
+            padding: 40px 32px;
+            border-radius: 24px;
             text-align: center;
             z-index: 20;
             display: none;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-            min-width: 300px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            min-width: 320px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
         }
         
         .game-over h2 {
-            margin-bottom: 20px;
-            font-size: 32px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            margin-bottom: 8px;
+            font-size: 28px;
+            font-weight: 600;
+            color: #1d1d1f;
+            letter-spacing: -0.5px;
         }
         
         .game-over .score-display {
-            font-size: 48px;
-            font-weight: bold;
-            margin: 20px 0;
-            color: #ffd700;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            font-size: 56px;
+            font-weight: 700;
+            margin: 16px 0;
+            color: #007AFF;
+            letter-spacing: -1px;
         }
         
         .game-over .stats {
-            margin: 20px 0;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
+            margin: 24px 0;
+            padding: 20px;
+            background: #f5f5f7;
+            border-radius: 16px;
             text-align: left;
         }
         
         .game-over .stats p {
-            margin: 8px 0;
-            font-size: 16px;
+            margin: 10px 0;
+            font-size: 15px;
+            color: #1d1d1f;
+            font-weight: 400;
+            letter-spacing: -0.2px;
         }
         
         .game-over .blessing {
-            margin-top: 20px;
-            font-size: 18px;
-            font-style: italic;
-            color: #ffd700;
+            margin-top: 24px;
+            font-size: 16px;
+            font-weight: 500;
+            color: #86868b;
+            letter-spacing: -0.3px;
         }
         
         .welcome-screen {
@@ -188,82 +206,108 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #ffffff;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             z-index: 100;
-            padding: 20px;
+            padding: 32px;
             box-sizing: border-box;
         }
         
         .welcome-screen h1 {
-            font-size: 48px;
-            color: white;
-            margin-bottom: 20px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            font-size: 40px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+        }
+        
+        .welcome-screen .subtitle {
+            font-size: 17px;
+            color: #86868b;
+            margin-bottom: 32px;
+            font-weight: 400;
+            letter-spacing: -0.3px;
         }
         
         .welcome-screen .instructions {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 20px;
-            border-radius: 12px;
-            max-width: 400px;
-            color: white;
-            margin-bottom: 20px;
+            background: #f5f5f7;
+            padding: 28px;
+            border-radius: 20px;
+            max-width: 380px;
+            color: #1d1d1f;
+            margin-bottom: 24px;
         }
         
         .welcome-screen .instructions h2 {
-            font-size: 24px;
-            margin-bottom: 15px;
-            color: #ffd700;
+            font-size: 20px;
+            margin-bottom: 16px;
+            color: #1d1d1f;
+            font-weight: 600;
+            letter-spacing: -0.4px;
         }
         
         .welcome-screen .instructions ul {
             text-align: left;
-            margin: 15px 0;
+            margin: 16px 0;
             padding-left: 20px;
         }
         
         .welcome-screen .instructions li {
-            margin: 10px 0;
-            font-size: 16px;
-            line-height: 1.5;
+            margin: 12px 0;
+            font-size: 15px;
+            line-height: 1.6;
+            color: #1d1d1f;
+            font-weight: 400;
+            letter-spacing: -0.2px;
         }
         
         .welcome-screen .camera-notice {
-            background: rgba(255, 193, 7, 0.2);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            color: white;
+            background: rgba(0, 122, 255, 0.08);
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            color: #007AFF;
             text-align: center;
-            font-size: 16px;
+            font-size: 15px;
+            font-weight: 500;
+            letter-spacing: -0.2px;
         }
         
         .welcome-screen .start-btn {
-            padding: 15px 40px;
-            font-size: 20px;
-            background-color: #ffd700;
-            color: #333;
+            padding: 16px 48px;
+            font-size: 17px;
+            background-color: #007AFF;
+            color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 14px;
             cursor: pointer;
-            font-weight: bold;
-            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            letter-spacing: -0.3px;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25);
         }
         
         .welcome-screen .start-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            background-color: #0066d6;
+            box-shadow: 0 6px 16px rgba(0, 122, 255, 0.35);
+            transform: translateY(-2px);
+        }
+        
+        .welcome-screen .start-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
         }
         
         .status {
             text-align: center;
-            margin: 10px 0;
+            margin: 12px 0;
             font-size: 14px;
-            color: #666;
+            color: #86868b;
+            font-weight: 400;
+            letter-spacing: -0.2px;
         }
         
         @media (max-width: 480px) {
@@ -273,8 +317,10 @@
             }
             
             #input_video {
-                width: 80px;
-                height: 60px;
+                width: 64px;
+                height: 48px;
+                top: 12px;
+                right: 12px;
             }
             
             .score {
@@ -282,28 +328,50 @@
             }
             
             button {
-                padding: 8px 16px;
+                padding: 10px 20px;
                 font-size: 14px;
+            }
+            
+            .game-container {
+                border-radius: 20px;
+            }
+            
+            .game-info {
+                padding: 16px 20px;
+                border-radius: 0 0 20px 20px;
+            }
+            
+            .welcome-screen {
+                padding: 24px;
+            }
+            
+            .welcome-screen h1 {
+                font-size: 32px;
+            }
+            
+            .welcome-screen .instructions {
+                padding: 20px;
             }
         }
     </style>
 </head>
 <body>
     <div class="welcome-screen" id="welcome-screen">
-        <h1>🐍 颈椎贪吃蛇</h1>
+        <h1>颈椎贪吃蛇</h1>
+        <div class="subtitle">用头部动作控制贪吃蛇</div>
         <div class="camera-notice">
-            📷 游戏需要使用摄像头来检测头部动作<br>
+            游戏需要使用摄像头来检测头部动作<br>
             请在浏览器弹窗中点击"允许"以启用摄像头
         </div>
         <div class="instructions">
-            <h2>🎮 游戏玩法</h2>
+            <h2>游戏玩法</h2>
             <ul>
-                <li>🔄 <strong>左转头</strong> → 贪吃蛇向左移动</li>
-                <li>🔄 <strong>右转头</strong> → 贪吃蛇向右移动</li>
-                <li>⬆️ <strong>抬头</strong> → 贪吃蛇向上移动</li>
-                <li>⬇️ <strong>低头</strong> → 贪吃蛇向下移动</li>
-                <li>🍎 吃到食物可以增加分数</li>
-                <li>🚫 撞到自己就游戏结束</li>
+                <li><strong>左转头</strong> → 贪吃蛇向左移动</li>
+                <li><strong>右转头</strong> → 贪吃蛇向右移动</li>
+                <li><strong>抬头</strong> → 贪吃蛇向上移动</li>
+                <li><strong>低头</strong> → 贪吃蛇向下移动</li>
+                <li>吃到食物可以增加分数</li>
+                <li>撞到自己或撞墙20次就游戏结束</li>
             </ul>
         </div>
         <button class="start-btn" id="welcome-start-btn">开始游戏</button>
@@ -317,26 +385,26 @@
         <div class="status" id="status-text" style="display: none;">加载模型中...</div>
         
         <div class="game-info">
-            <div class="score">分数: <span id="score">0</span></div>
-            <div class="action-display">检测动作: <span id="detected-action">-</span></div>
-            <div class="action-display">🧱 撞墙: <span id="wall-count">0</span>/20</div>
+            <div class="score">分数 <span id="score">0</span></div>
+            <div class="action-display">检测动作 <span id="detected-action">-</span></div>
+            <div class="action-display">撞墙 <span id="wall-count">0</span>/20</div>
         </div>
         
         <div class="controls">
-            <button id="btn-restart">🔄 重新开始</button>
+            <button id="btn-restart">重新开始</button>
         </div>
         
         <div class="game-over" id="game-over-screen">
-            <h2>GAME OVER</h2>
+            <h2>游戏结束</h2>
             <div class="score-display"><span id="final-score">0</span></div>
             <div class="stats">
-                <p>🔄 左转: <span id="left-count">0</span> 次</p>
-                <p>🔄 右转: <span id="right-count">0</span> 次</p>
-                <p>⬆️ 抬头: <span id="up-count">0</span> 次</p>
-                <p>⬇️ 低头: <span id="down-count">0</span> 次</p>
-                <p>🧱 撞墙: <span id="final-wall-count">0</span> 次</p>
+                <p>左转 <span id="left-count">0</span> 次</p>
+                <p>右转 <span id="right-count">0</span> 次</p>
+                <p>抬头 <span id="up-count">0</span> 次</p>
+                <p>低头 <span id="down-count">0</span> 次</p>
+                <p>撞墙 <span id="final-wall-count">0</span> 次</p>
             </div>
-            <div class="blessing">✨ 翔子祝你有个好颈椎 ✨</div>
+            <div class="blessing">祝你有个好颈椎</div>
             <button id="btn-restart-over" style="margin-top: 20px;">再玩一次</button>
         </div>
     </div>
