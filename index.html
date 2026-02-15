@@ -90,6 +90,17 @@
             margin-top: 10px;
         }
         
+        .game-info .action-display.warning {
+            color: #ff6b6b;
+            font-weight: bold;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
         .controls {
             display: flex;
             justify-content: center;
@@ -308,6 +319,7 @@
         <div class="game-info">
             <div class="score">分数: <span id="score">0</span></div>
             <div class="action-display">检测动作: <span id="detected-action">-</span></div>
+            <div class="action-display">🧱 撞墙: <span id="wall-count">0</span>/20</div>
         </div>
         
         <div class="controls">
@@ -322,6 +334,7 @@
                 <p>🔄 右转: <span id="right-count">0</span> 次</p>
                 <p>⬆️ 抬头: <span id="up-count">0</span> 次</p>
                 <p>⬇️ 低头: <span id="down-count">0</span> 次</p>
+                <p>🧱 撞墙: <span id="final-wall-count">0</span> 次</p>
             </div>
             <div class="blessing">✨ 翔子祝你有个好颈椎 ✨</div>
             <button id="btn-restart-over" style="margin-top: 20px;">再玩一次</button>
@@ -363,6 +376,10 @@
             down: 0
         };
         
+        // 撞墙统计
+        let wallCollisions = 0;
+        const MAX_WALL_COLLISIONS = 20;
+        
         function initGame() {
             gameSpeed = BASE_SPEED;
             
@@ -381,6 +398,9 @@
                 up: 0,
                 down: 0
             };
+            
+            wallCollisions = 0;
+            updateWallCollisionDisplay();
             
             createFood();
             isGameRunning = true;
@@ -406,10 +426,30 @@
             if (!isGameRunning) return;
             const head = { x: snake[0].x + dx, y: snake[0].y + dy };
             
-            if (head.x < 0) head.x = TILE_COUNT - 1;
-            if (head.x >= TILE_COUNT) head.x = 0;
-            if (head.y < 0) head.y = TILE_COUNT - 1;
-            if (head.y >= TILE_COUNT) head.y = 0;
+            let hitWall = false;
+            if (head.x < 0) {
+                head.x = TILE_COUNT - 1;
+                hitWall = true;
+            } else if (head.x >= TILE_COUNT) {
+                head.x = 0;
+                hitWall = true;
+            }
+            if (head.y < 0) {
+                head.y = TILE_COUNT - 1;
+                hitWall = true;
+            } else if (head.y >= TILE_COUNT) {
+                head.y = 0;
+                hitWall = true;
+            }
+            
+            if (hitWall) {
+                wallCollisions++;
+                updateWallCollisionDisplay();
+                if (wallCollisions >= MAX_WALL_COLLISIONS) {
+                    gameOver();
+                    return;
+                }
+            }
             
             for (let part of snake) {
                 if (head.x === part.x && head.y === part.y) {
@@ -476,7 +516,20 @@
             document.getElementById('right-count').innerText = actionCounts.right;
             document.getElementById('up-count').innerText = actionCounts.up;
             document.getElementById('down-count').innerText = actionCounts.down;
+            document.getElementById('wall-count').innerText = wallCollisions;
+            document.getElementById('final-wall-count').innerText = wallCollisions;
             document.getElementById('game-over-screen').style.display = 'block';
+        }
+        
+        function updateWallCollisionDisplay() {
+            document.getElementById('wall-count').innerText = wallCollisions;
+            const wallCountElement = document.getElementById('wall-count');
+            
+            if (wallCollisions >= MAX_WALL_COLLISIONS - 5) {
+                wallCountElement.classList.add('warning');
+            } else {
+                wallCountElement.classList.remove('warning');
+            }
         }
         
         function lerp(start, end, amt) {
