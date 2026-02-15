@@ -48,17 +48,16 @@
         }
         
         #input_video {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            width: 80px;
-            height: 60px;
-            border-radius: 12px;
+            position: relative;
+            width: 64px;
+            height: 48px;
+            border-radius: 8px;
             object-fit: cover;
             border: none;
-            z-index: 10;
             transform: scaleX(-1);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+            display: block;
         }
         
         #debug-canvas {
@@ -79,6 +78,10 @@
             background: #f5f5f7;
             padding: 20px 24px;
             border-radius: 0 0 24px 24px;
+        }
+        
+        .game-info video {
+            margin-bottom: 12px;
         }
         
         .score {
@@ -379,12 +382,12 @@
     
     <div class="game-container">
         <canvas id="gameCanvas" width="400" height="400"></canvas>
-        <video id="input_video" playsinline></video>
         <canvas id="debug-canvas" width="320" height="240"></canvas>
         
         <div class="status" id="status-text" style="display: none;">加载模型中...</div>
         
         <div class="game-info">
+            <video id="input_video" playsinline></video>
             <div class="score">分数 <span id="score">0</span></div>
             <div class="action-display">检测动作 <span id="detected-action">-</span></div>
             <div class="action-display">撞墙 <span id="wall-count">0</span>/20</div>
@@ -404,7 +407,7 @@
                 <p>低头 <span id="down-count">0</span> 次</p>
                 <p>撞墙 <span id="final-wall-count">0</span> 次</p>
             </div>
-            <div class="blessing">祝你有个好颈椎</div>
+            <div class="blessing">翔子祝你有个好颈椎</div>
             <button id="btn-restart-over" style="margin-top: 20px;">再玩一次</button>
         </div>
     </div>
@@ -570,10 +573,6 @@
                 ctx.fillStyle = i === 0 ? '#ccffdd' : '#00ff88';
                 ctx.fillRect(part.x * GRID_SIZE + 1, part.y * GRID_SIZE + 1, GRID_SIZE - 2, GRID_SIZE - 2);
             });
-            
-            ctx.fillStyle = 'white';
-            ctx.font = '24px Arial';
-            ctx.fillText('分数: ' + score, 10, 35);
         }
         
         function gameOver() {
