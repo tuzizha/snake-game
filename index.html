@@ -60,7 +60,7 @@
             border: 2px solid #00ccff;
             border-radius: 4px;
             z-index: 10;
-            display: block;
+            display: none;
         }
         
         .game-info {
@@ -110,22 +110,49 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: rgba(0, 0, 0, 0.8);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 20px;
-            border-radius: 8px;
+            padding: 30px;
+            border-radius: 16px;
             text-align: center;
             z-index: 20;
             display: none;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            min-width: 300px;
         }
         
         .game-over h2 {
-            margin-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 32px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
         
-        .game-over p {
-            margin-bottom: 20px;
+        .game-over .score-display {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .game-over .stats {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            text-align: left;
+        }
+        
+        .game-over .stats p {
+            margin: 8px 0;
+            font-size: 16px;
+        }
+        
+        .game-over .blessing {
+            margin-top: 20px;
             font-size: 18px;
+            font-style: italic;
+            color: #ffd700;
         }
         
         .status {
@@ -168,9 +195,6 @@
         <div class="game-info">
             <div class="score">分数: <span id="score">0</span></div>
             <div style="margin-top: 5px;">检测动作: <span id="detected-action">-</span></div>
-            <div style="margin-top: 5px; font-size: 12px; color: #666;" id="debug-info">
-                等待人脸检测...
-            </div>
         </div>
         
         <div class="controls">
@@ -179,9 +203,16 @@
         </div>
         
         <div class="game-over" id="game-over-screen">
-            <h2>游戏结束</h2>
-            <p>最终分数: <span id="final-score">0</span></p>
-            <button id="btn-restart-over">再玩一次</button>
+            <h2>GAME OVER</h2>
+            <div class="score-display"><span id="final-score">0</span></div>
+            <div class="stats">
+                <p>🔄 左转: <span id="left-count">0</span> 次</p>
+                <p>🔄 右转: <span id="right-count">0</span> 次</p>
+                <p>⬆️ 抬头: <span id="up-count">0</span> 次</p>
+                <p>⬇️ 低头: <span id="down-count">0</span> 次</p>
+            </div>
+            <div class="blessing">✨ 翔子祝你有个好颈椎 ✨</div>
+            <button id="btn-restart-over" style="margin-top: 20px;">再玩一次</button>
         </div>
     </div>
     
@@ -212,6 +243,14 @@
         let lastDirectionTime = 0;
         const DIRECTION_COOLDOWN = 300;
         
+        // 动作统计
+        let actionCounts = {
+            left: 0,
+            right: 0,
+            up: 0,
+            down: 0
+        };
+        
         function initGame() {
             gameSpeed = BASE_SPEED;
             
@@ -223,6 +262,14 @@
             dx = 1;
             dy = 0;
             score = 0;
+            
+            actionCounts = {
+                left: 0,
+                right: 0,
+                up: 0,
+                down: 0
+            };
+            
             createFood();
             isGameRunning = true;
             
@@ -313,6 +360,10 @@
             isGameRunning = false;
             clearInterval(gameLoopId);
             document.getElementById('final-score').innerText = score;
+            document.getElementById('left-count').innerText = actionCounts.left;
+            document.getElementById('right-count').innerText = actionCounts.right;
+            document.getElementById('up-count').innerText = actionCounts.up;
+            document.getElementById('down-count').innerText = actionCounts.down;
             document.getElementById('game-over-screen').style.display = 'block';
         }
         
@@ -372,6 +423,7 @@
             
             if (changed) {
                 lastDirectionTime = Date.now();
+                actionCounts[dirKey.toLowerCase()]++;
                 const actionNames = { 'LEFT': '左转', 'RIGHT': '右转', 'UP': '抬头', 'DOWN': '低头' };
                 document.getElementById('detected-action').innerText = actionNames[dirKey];
                 document.getElementById('detected-action').style.color = '#ff0055';
@@ -462,13 +514,8 @@
                 debugCtx.moveTo(nx, ny);
                 debugCtx.lineTo(nx + deltaX * 500, ny + deltaY * 500);
                 debugCtx.stroke();
-                
-                document.getElementById('debug-info').innerHTML = 
-                    `鼻子: (${currentNoseSmoothed.x.toFixed(3)}, ${currentNoseSmoothed.y.toFixed(3)})<br>` +
-                    `偏移: (${deltaX.toFixed(4)}, ${deltaY.toFixed(4)})`;
             } else {
                 document.getElementById('detected-action').innerText = "-";
-                document.getElementById('debug-info').innerText = "未检测到人脸";
             }
             debugCtx.restore();
         }
