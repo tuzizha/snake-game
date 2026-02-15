@@ -155,6 +155,83 @@
             color: #ffd700;
         }
         
+        .welcome-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        .welcome-screen h1 {
+            font-size: 48px;
+            color: white;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .welcome-screen .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 400px;
+            color: white;
+            margin-bottom: 20px;
+        }
+        
+        .welcome-screen .instructions h2 {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #ffd700;
+        }
+        
+        .welcome-screen .instructions ul {
+            text-align: left;
+            margin: 15px 0;
+            padding-left: 20px;
+        }
+        
+        .welcome-screen .instructions li {
+            margin: 10px 0;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        .welcome-screen .camera-notice {
+            background: rgba(255, 193, 7, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            color: white;
+            text-align: center;
+            font-size: 16px;
+        }
+        
+        .welcome-screen .start-btn {
+            padding: 15px 40px;
+            font-size: 20px;
+            background-color: #ffd700;
+            color: #333;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .welcome-screen .start-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+        
         .status {
             text-align: center;
             margin: 10px 0;
@@ -185,12 +262,32 @@
     </style>
 </head>
 <body>
+    <div class="welcome-screen" id="welcome-screen">
+        <h1>🐍 颈椎贪吃蛇</h1>
+        <div class="camera-notice">
+            📷 游戏需要使用摄像头来检测头部动作<br>
+            请在浏览器弹窗中点击"允许"以启用摄像头
+        </div>
+        <div class="instructions">
+            <h2>🎮 游戏玩法</h2>
+            <ul>
+                <li>🔄 <strong>左转头</strong> → 贪吃蛇向左移动</li>
+                <li>🔄 <strong>右转头</strong> → 贪吃蛇向右移动</li>
+                <li>⬆️ <strong>抬头</strong> → 贪吃蛇向上移动</li>
+                <li>⬇️ <strong>低头</strong> → 贪吃蛇向下移动</li>
+                <li>🍎 吃到食物可以增加分数</li>
+                <li>🚫 撞到自己就游戏结束</li>
+            </ul>
+        </div>
+        <button class="start-btn" id="welcome-start-btn">开始游戏</button>
+    </div>
+    
     <div class="game-container">
         <canvas id="gameCanvas" width="400" height="400"></canvas>
         <video id="input_video" playsinline></video>
         <canvas id="debug-canvas" width="320" height="240"></canvas>
         
-        <div class="status" id="status-text">加载模型中...</div>
+        <div class="status" id="status-text" style="display: none;">加载模型中...</div>
         
         <div class="game-info">
             <div class="score">分数: <span id="score">0</span></div>
@@ -437,6 +534,7 @@
         async function initMediaPipe() {
             const statusText = document.getElementById('status-text');
             const startBtn = document.getElementById('btn-start');
+            const welcomeScreen = document.getElementById('welcome-screen');
             
             faceMesh = new FaceMesh({
                 locateFile: (file) => {
@@ -463,9 +561,12 @@
             
             try {
                 await camera.start();
+                welcomeScreen.style.display = 'none';
+                statusText.style.display = 'block';
                 statusText.innerText = "Ready";
                 startBtn.disabled = false;
             } catch (e) {
+                statusText.style.display = 'block';
                 statusText.innerText = "Camera Error";
                 console.error(e);
             }
@@ -520,6 +621,7 @@
             debugCtx.restore();
         }
         
+        document.getElementById('welcome-start-btn').addEventListener('click', initMediaPipe);
         document.getElementById('btn-start').addEventListener('click', initGame);
         document.getElementById('btn-restart').addEventListener('click', initGame);
         document.getElementById('btn-restart-over').addEventListener('click', initGame);
@@ -531,8 +633,6 @@
             if (e.key === 'ArrowLeft') triggerControl('LEFT');
             if (e.key === 'ArrowRight') triggerControl('RIGHT');
         });
-        
-        initMediaPipe();
     </script>
 </body>
 </html>
