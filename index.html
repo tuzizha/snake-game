@@ -29,13 +29,19 @@
             width: 100%;
             max-width: 400px;
             margin: 20px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
         }
         
         #gameCanvas {
             background-color: #000;
-            border-radius: 8px;
+            border-radius: 12px;
             display: block;
             margin: 0 auto;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            border: 3px solid #333;
         }
         
         #input_video {
@@ -65,13 +71,23 @@
         
         .game-info {
             text-align: center;
-            margin: 10px 0;
+            margin: 15px 0;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 12px;
         }
         
         .score {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
-            color: #333;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .game-info .action-display {
+            font-size: 18px;
+            color: white;
+            margin-top: 10px;
         }
         
         .controls {
@@ -291,12 +307,11 @@
         
         <div class="game-info">
             <div class="score">分数: <span id="score">0</span></div>
-            <div style="margin-top: 5px;">检测动作: <span id="detected-action">-</span></div>
+            <div class="action-display">检测动作: <span id="detected-action">-</span></div>
         </div>
         
         <div class="controls">
-            <button id="btn-start" disabled>开始游戏</button>
-            <button id="btn-restart">重新开始</button>
+            <button id="btn-restart">🔄 重新开始</button>
         </div>
         
         <div class="game-over" id="game-over-screen">
@@ -533,7 +548,6 @@
         
         async function initMediaPipe() {
             const statusText = document.getElementById('status-text');
-            const startBtn = document.getElementById('btn-start');
             const welcomeScreen = document.getElementById('welcome-screen');
             
             faceMesh = new FaceMesh({
@@ -564,7 +578,6 @@
                 welcomeScreen.style.display = 'none';
                 statusText.style.display = 'block';
                 statusText.innerText = "Ready";
-                startBtn.disabled = false;
                 initGame();
             } catch (e) {
                 statusText.style.display = 'block';
@@ -623,7 +636,6 @@
         }
         
         document.getElementById('welcome-start-btn').addEventListener('click', initMediaPipe);
-        document.getElementById('btn-start').addEventListener('click', initGame);
         document.getElementById('btn-restart').addEventListener('click', initGame);
         document.getElementById('btn-restart-over').addEventListener('click', initGame);
         
