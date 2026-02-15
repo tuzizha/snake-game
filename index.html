@@ -56,16 +56,15 @@
         
         #input_video {
             position: relative;
-            width: 72px;
-            height: 54px;
-            border-radius: 12px;
+            width: 56px;
+            height: 42px;
+            border-radius: 10px;
             object-fit: cover;
             border: 2px solid rgba(255, 255, 255, 0.8);
             transform: scaleX(-1);
             box-shadow: 
                 0 4px 16px rgba(0, 0, 0, 0.2),
                 0 0 0 1px rgba(0, 0, 0, 0.05) inset;
-            margin: 0 auto;
             display: block;
         }
         
@@ -85,32 +84,46 @@
             text-align: center;
             margin: 0;
             background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%);
-            padding: 24px 28px;
+            padding: 16px 20px;
             border-radius: 0 0 32px 32px;
             border-top: 1px solid rgba(0, 0, 0, 0.05);
             box-shadow: 
                 0 -4px 16px rgba(0, 0, 0, 0.02) inset;
         }
         
+        .game-info .info-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .game-info .info-row:last-child {
+            margin-bottom: 0;
+        }
+        
         .game-info .score {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 700;
             color: #1e293b;
             letter-spacing: -0.5px;
             text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
-            margin-bottom: 16px;
+            flex: 1;
+            text-align: left;
         }
         
-        .game-info video {
-            margin-bottom: 16px;
+        .game-info .video-wrapper {
+            flex-shrink: 0;
         }
         
         .game-info .action-display {
-            font-size: 15px;
+            font-size: 13px;
             color: #64748b;
-            margin-top: 10px;
             font-weight: 500;
             letter-spacing: -0.2px;
+            flex: 1;
+            text-align: right;
         }
         
         .game-info .action-display.warning {
@@ -123,7 +136,7 @@
             display: flex;
             justify-content: center;
             gap: 12px;
-            margin: 20px 0 8px 0;
+            margin: 16px 0 8px 0;
         }
         
         button {
@@ -364,8 +377,8 @@
         
         .status {
             text-align: center;
-            margin: 14px 0;
-            font-size: 14px;
+            margin: 8px 0;
+            font-size: 13px;
             color: #64748b;
             font-weight: 500;
             letter-spacing: -0.2px;
@@ -387,18 +400,21 @@
             }
             
             #input_video {
-                width: 60px;
-                height: 45px;
+                width: 48px;
+                height: 36px;
             }
             
             .game-info {
-                padding: 20px 24px;
+                padding: 14px 16px;
                 border-radius: 0 0 24px 24px;
             }
             
             .game-info .score {
-                font-size: 24px;
-                margin-bottom: 12px;
+                font-size: 20px;
+            }
+            
+            .game-info .action-display {
+                font-size: 12px;
             }
             
             button {
@@ -496,11 +512,15 @@
             }
             
             .game-info {
-                padding: 28px 32px;
+                padding: 18px 24px;
             }
             
             .game-info .score {
-                font-size: 32px;
+                font-size: 26px;
+            }
+            
+            .game-info .action-display {
+                font-size: 14px;
             }
             
             .game-over {
@@ -523,11 +543,15 @@
             }
             
             .game-info {
-                padding: 32px 36px;
+                padding: 20px 28px;
             }
             
             .game-info .score {
-                font-size: 36px;
+                font-size: 28px;
+            }
+            
+            .game-info .action-display {
+                font-size: 15px;
             }
             
             .game-over {
@@ -574,10 +598,16 @@
         <div class="status" id="status-text" style="display: none;">加载模型中...</div>
         
         <div class="game-info">
-            <div class="score">分数 <span id="score">0</span></div>
-            <video id="input_video" playsinline></video>
-            <div class="action-display">检测动作 <span id="detected-action">-</span></div>
-            <div class="action-display">撞墙 <span id="wall-count">0</span>/20</div>
+            <div class="info-row">
+                <div class="score">分数 <span id="score">0</span></div>
+                <div class="video-wrapper">
+                    <video id="input_video" playsinline></video>
+                </div>
+            </div>
+            <div class="info-row">
+                <div class="action-display">检测动作 <span id="detected-action">-</span></div>
+                <div class="action-display">撞墙 <span id="wall-count">0</span>/20</div>
+            </div>
         </div>
         
         <div class="controls">
